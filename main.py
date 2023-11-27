@@ -76,8 +76,8 @@ def register():
             )
             db.session.add(new_user)
             db.session.commit()
-            load_user(new_user)
-            return redirect(url_for('login'))
+            login_user(new_user)
+            return redirect(url_for('get_all_posts'))
     except exc.IntegrityError:
         flash("You've already signed up with that email, login instead!")
         return redirect(url_for("login"))
@@ -106,6 +106,7 @@ def login():
 
 @app.route('/logout')
 def logout():
+    logout_user()
     return redirect(url_for('get_all_posts'))
 
 
