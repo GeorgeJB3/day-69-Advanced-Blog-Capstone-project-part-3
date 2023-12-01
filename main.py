@@ -18,7 +18,7 @@ app.config['SECRET_KEY'] = '8BYkEfBA6O6donzWlSihBXox7C0sKR6b'
 ckeditor = CKEditor(app)
 Bootstrap5(app)
 
-# TODO: Configure Flask-Login
+# Configure Flask-Login
 login_manager = LoginManager()
 login_manager.init_app(app)
 
@@ -26,6 +26,16 @@ login_manager.init_app(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///posts.db'
 db = SQLAlchemy()
 db.init_app(app)
+
+# Initialise gravatar
+gravatar = Gravatar(app,
+                    size=100,
+                    rating='g',
+                    default='retro',
+                    force_default=False,
+                    force_lower=False,
+                    use_ssl=False,
+                    base_url=None)
 
 
 # CONFIGURE TABLES
@@ -76,6 +86,8 @@ with app.app_context():
 
 
 def admin_only(f):
+    """Decorator function to only allow the admin to have access to certain parts of the program.
+    The admin is the first one to register i.e. id = 1"""
     @wraps(f)
     def inner(*args, **kwargs):
         if not current_user.is_authenticated or current_user.id != 1:
@@ -94,6 +106,10 @@ def load_user(user_id):
 # TODO: Use Werkzeug to hash the user's password when creating a new user.
 @app.route('/register', methods=["GET", "POST"])
 def register():
+    """
+    Register a new user and add details to table. If details already exist in the
+    database you'll be redirected to the login page
+    """
     reg_form = RegisterForm()
     try:
         if reg_form.validate_on_submit():
@@ -120,6 +136,8 @@ def register():
 # TODO: Retrieve a user from the database based on their email.
 @app.route('/login', methods=["GET", "POST"])
 def login():
+    """ Login using email and password provided at registration. Email and Password
+     are checked before being logged in"""
     login_form = LoginForm()
     if login_form.validate_on_submit():
         email = login_form.email.data
@@ -139,12 +157,14 @@ def login():
 
 @app.route('/logout')
 def logout():
+    """ Logout of account """
     logout_user()
     return redirect(url_for('get_all_posts'))
 
 
 @app.route('/')
 def get_all_posts():
+    """ Renders homepage with all the blog posts """
     result = db.session.execute(db.select(BlogPost))
     posts = result.scalars().all()
     return render_template("index.html", all_posts=posts)
@@ -153,6 +173,7 @@ def get_all_posts():
 # TODO: Allow logged-in users to comment on posts
 @app.route("/post/<int:post_id>", methods=["GET", "POST"])
 def show_post(post_id):
+    """ Click on a post for it to render in another page where you can add comments """
     requested_post = db.get_or_404(BlogPost, post_id)
     comment_form = CommentForm()
     if comment_form.validate_on_submit():
@@ -175,6 +196,10 @@ def show_post(post_id):
 @app.route("/new-post", methods=["GET", "POST"])
 @admin_only
 def add_new_post():
+    """
+    This allows you to add new posts which are added to the database.
+    Only the admin can add new posts
+    """
     form = CreatePostForm()
     if form.validate_on_submit():
         new_post = BlogPost(
@@ -191,10 +216,10 @@ def add_new_post():
     return render_template("make-post.html", form=form, current_user=current_user)
 
 
-# TODO: Use a decorator so only an admin user can edit a post
 @admin_only
 @app.route("/edit-post/<int:post_id>", methods=["GET", "POST"])
 def edit_post(post_id):
+    """ Edit posts and saves changes to the database, Only done by the admin """
     post = db.get_or_404(BlogPost, post_id)
     edit_form = CreatePostForm(
         title=post.title,
@@ -214,10 +239,10 @@ def edit_post(post_id):
     return render_template("make-post.html", form=edit_form, is_edit=True)
 
 
-# TODO: Use a decorator so only an admin user can delete a post
 @admin_only
 @app.route("/delete/<int:post_id>")
 def delete_post(post_id):
+    """ Delete a chosen post from webpage and removed from database, only done by admin """
     post_to_delete = db.get_or_404(BlogPost, post_id)
     db.session.delete(post_to_delete)
     db.session.commit()
@@ -226,11 +251,13 @@ def delete_post(post_id):
 
 @app.route("/about")
 def about():
+    """ Renders about page """
     return render_template("about.html")
 
 
 @app.route("/contact")
 def contact():
+    """ Renders contact page """
     return render_template("contact.html")
 
 
